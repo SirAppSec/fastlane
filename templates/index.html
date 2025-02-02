@@ -6,21 +6,29 @@
     <title>Toll Road Price Analysis</title>
 </head>
 <body>
-    <h1>Fast Lane price analysis</h1>
+    <h1>Toll Road Price Analysis</h1>
 
     <h2>Price Over Time</h2>
     <img src="{{ url_for('static', filename='price_over_time.png') }}" alt="Price Over Time">
 
+    {% if price_distribution_by_hour_exists %}
     <h2>Price Distribution by Hour of the Day</h2>
     <img src="{{ url_for('static', filename='price_distribution_by_hour.png') }}" alt="Price Distribution by Hour">
+    {% endif %}
 
+    {% if avg_price_by_day_exists %}
     <h2>Average Price by Day of the Week</h2>
     <img src="{{ url_for('static', filename='avg_price_by_day.png') }}" alt="Average Price by Day">
+    {% endif %}
 
+    {% if price_stability_exists %}
     <h2>Price Stability Over Time</h2>
     <img src="{{ url_for('static', filename='price_stability.png') }}" alt="Price Stability">
+    {% endif %}
 
+    {% if min_price_intervals_exists %}
     <h2>Minimum Price by 15-Minute and Hourly Intervals</h2>
     <img src="{{ url_for('static', filename='min_price_intervals.png') }}" alt="Minimum Price by Intervals">
+    {% endif %}
 </body>
 </html>

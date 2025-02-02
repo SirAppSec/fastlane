@@ -80,66 +80,74 @@ def create_charts():
 
         # Chart 1: Price Over Time
         plt.figure(figsize=(10, 5))
-        plt.plot(df['Timestamp'], df['Price'], marker='o')
+        if len(df) > 1:
+            plt.plot(df['Timestamp'], df['Price'], marker='o', linestyle='-', label='Price Over Time')
+        else:
+            plt.plot(df['Timestamp'], df['Price'], marker='o', linestyle='none', label='Single Price Point')
         plt.xlabel('Time')
         plt.ylabel('Price')
         plt.title('Price Over Time')
         plt.xticks(rotation=45)
+        plt.legend()
         plt.tight_layout()
         plt.savefig('static/price_over_time.png')
         plt.close()
 
-        # Chart 2: Price Distribution by Hour of the Day
-        plt.figure(figsize=(10, 5))
-        plt.hist(df['Hour'], bins=24, edgecolor='black')
-        plt.xlabel('Hour of the Day')
-        plt.ylabel('Frequency')
-        plt.title('Price Distribution by Hour of the Day')
-        plt.xticks(range(24))
-        plt.tight_layout()
-        plt.savefig('static/price_distribution_by_hour.png')
-        plt.close()
+        # Chart 2: Price Distribution by Hour of the Day (Only if enough data)
+        if len(df) > 1:
+            plt.figure(figsize=(10, 5))
+            plt.hist(df['Hour'], bins=24, edgecolor='black')
+            plt.xlabel('Hour of the Day')
+            plt.ylabel('Frequency')
+            plt.title('Price Distribution by Hour of the Day')
+            plt.xticks(range(24))
+            plt.tight_layout()
+            plt.savefig('static/price_distribution_by_hour.png')
+            plt.close()
 
-        # Chart 3: Average Price by Day of the Week
-        avg_price_by_day = df.groupby('DayOfWeek')['Price'].mean().reindex([
-            'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
-        ])
-        plt.figure(figsize=(10, 5))
-        avg_price_by_day.plot(kind='bar', edgecolor='black')
-        plt.xlabel('Day of the Week')
-        plt.ylabel('Average Price')
-        plt.title('Average Price by Day of the Week')
-        plt.tight_layout()
-        plt.savefig('static/avg_price_by_day.png')
-        plt.close()
+        # Chart 3: Average Price by Day of the Week (Only if enough data)
+        if len(df) > 1:
+            avg_price_by_day = df.groupby('DayOfWeek')['Price'].mean().reindex([
+                'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+            ])
+            plt.figure(figsize=(10, 5))
+            avg_price_by_day.plot(kind='bar', edgecolor='black')
+            plt.xlabel('Day of the Week')
+            plt.ylabel('Average Price')
+            plt.title('Average Price by Day of the Week')
+            plt.tight_layout()
+            plt.savefig('static/avg_price_by_day.png')
+            plt.close()
 
-        # Chart 4: Price Stability (Frequency of Price Changes in 15-Minute Windows)
-        price_changes = df.groupby('TimeWindow15Min')['Price'].std().fillna(0)
-        plt.figure(figsize=(10, 5))
-        plt.plot(price_changes.index, price_changes.values, marker='o')
-        plt.xlabel('Time')
-        plt.ylabel('Price Standard Deviation (15-Minute Window)')
-        plt.title('Price Stability Over Time')
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        plt.savefig('static/price_stability.png')
-        plt.close()
+        # Chart 4: Price Stability (Only if enough data)
+        if len(df) > 1:
+            price_changes = df.groupby('TimeWindow15Min')['Price'].std().fillna(0)
+            plt.figure(figsize=(10, 5))
+            plt.plot(price_changes.index, price_changes.values, marker='o', linestyle='-')
+            plt.xlabel('Time')
+            plt.ylabel('Price Standard Deviation (15-Minute Window)')
+            plt.title('Price Stability Over Time')
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.savefig('static/price_stability.png')
+            plt.close()
 
-        # Chart 5: Minimum Price by 15-Minute and Hourly Intervals
-        min_prices_15min = df.groupby('TimeWindow15Min')['Price'].min().reset_index()
-        min_prices_1hour = df.groupby('TimeWindow1Hour')['Price'].min().reset_index()
+        # Chart 5: Minimum Price by 15-Minute and Hourly Intervals (Only if enough data)
+        if len(df) > 1:
+            min_prices_15min = df.groupby('TimeWindow15Min')['Price'].min().reset_index()
+            min_prices_1hour = df.groupby('TimeWindow1Hour')['Price'].min().reset_index()
 
-        plt.figure(figsize=(14, 6))
-        plt.plot(min_prices_15min['TimeWindow15Min'], min_prices_15min['Price'], marker='o', label='15-Minute Intervals')
-        plt.plot(min_prices_1hour['TimeWindow1Hour'], min_prices_1hour['Price'], marker='x', label='1-Hour Intervals')
-        plt.xlabel('Time')
-        plt.ylabel('Minimum Price')
-        plt.title('Minimum Price by 15-Minute and Hourly Intervals')
-        plt.xticks(rotation=45)
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig('static/min_price_intervals.png')
-        plt.close()
+            plt.figure(figsize=(14, 6))
+            plt.plot(min_prices_15min['TimeWindow15Min'], min_prices_15min['Price'], marker='o', label='15-Minute Intervals')
+            plt.plot(min_prices_1hour['TimeWindow1Hour'], min_prices_1hour['Price'], marker='x', label='1-Hour Intervals')
+            plt.xlabel('Time')
+            plt.ylabel('Minimum Price')
+            plt.title('Minimum Price by 15-Minute and Hourly Intervals')
+            plt.xticks(rotation=45)
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig('static/min_price_intervals.png')
+            plt.close()
 
     except FileNotFoundError:
         print("Data file not found. No charts generated.")
@@ -152,7 +160,14 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     create_charts()
-    return render_template('index.html')
+    chart_files = {
+        'price_distribution_by_hour': 'price_distribution_by_hour.png',
+        'avg_price_by_day': 'avg_price_by_day.png',
+        'price_stability': 'price_stability.png',
+        'min_price_intervals': 'min_price_intervals.png'
+    }
+    chart_exists = {f"{key}_exists": os.path.exists(f"static/{value}") for key, value in chart_files.items()}
+    return render_template('index.html', **chart_exists)
 
 # Schedule the scraping task to run every 30 seconds
 schedule.every(30).seconds.do(scrape_price)
