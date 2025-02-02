@@ -36,15 +36,26 @@ def scrape_price():
             price_span = soup.find('span', id='lblPrice')
 
             if price_span:
-                price = price_span.text.strip()
+                new_price = price_span.text.strip()
                 timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-                # Save the price and timestamp to a CSV file
-                with open(DATA_FILE, 'a', newline='') as file:
-                    writer = csv.writer(file)
-                    writer.writerow([timestamp, price])
+                # Check if the CSV file exists and read the last recorded price
+                last_price = None
+                if os.path.exists(DATA_FILE):
+                    with open(DATA_FILE, 'r') as file:
+                        reader = csv.reader(file)
+                        rows = list(reader)
+                        if len(rows) > 1:  # Skip header row
+                            last_price = rows[-1][1]  # Last recorded price
 
-                print(f"Scraped price: {price} at {timestamp}")
+                # Only update the CSV file if the price has changed
+                if last_price is None or new_price != last_price:
+                    with open(DATA_FILE, 'a', newline='') as file:
+                        writer = csv.writer(file)
+                        writer.writerow([timestamp, new_price])
+                    print(f"Scraped price: {new_price} at {timestamp} (Price changed)")
+                else:
+                    print(f"Scraped price: {new_price} at {timestamp} (No change)")
                 break  # Exit the retry loop if successful
             else:
                 print("Price element not found")
