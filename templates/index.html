@@ -3,10 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Price Chart</title>
+    <title>Toll Road Price Analysis</title>
 </head>
 <body>
-    <h1>Price Over Time</h1>
-    <img src="{{ url_for('static', filename='price_chart.png') }}" alt="Price Chart">
+    <h1>Fast Lane price analysis</h1>
+
+    <h2>Price Over Time</h2>
+    <img src="{{ url_for('static', filename='price_over_time.png') }}" alt="Price Over Time">
+
+    <h2>Price Distribution by Hour of the Day</h2>
+    <img src="{{ url_for('static', filename='price_distribution_by_hour.png') }}" alt="Price Distribution by Hour">
+
+    <h2>Average Price by Day of the Week</h2>
+    <img src="{{ url_for('static', filename='avg_price_by_day.png') }}" alt="Average Price by Day">
+
+    <h2>Price Stability Over Time</h2>
+    <img src="{{ url_for('static', filename='price_stability.png') }}" alt="Price Stability">
+
+    <h2>Minimum Price by 15-Minute and Hourly Intervals</h2>
+    <img src="{{ url_for('static', filename='min_price_intervals.png') }}" alt="Minimum Price by Intervals">
 </body>
 </html>

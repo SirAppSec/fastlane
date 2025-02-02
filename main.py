@@ -4,13 +4,20 @@ import time
 import schedule
 import csv
 from flask import Flask, render_template
-import matplotlib.pyplot as plt
-import os
-from datetime import datetime
 import matplotlib
 matplotlib.use('Agg')  # Set the backend to non-interactive
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import os
+from datetime import datetime
+
 # File to store the scraped data
 DATA_FILE = 'price_data.csv'
+
+# Print the absolute path of the data file
+print(f"Data file path: {os.path.abspath(DATA_FILE)}")
+print(f"Current working directory: {os.getcwd()}")
 
 # Function to scrape the price with error handling
 def scrape_price():
@@ -50,50 +57,96 @@ def scrape_price():
             else:
                 print("All retries failed. Skipping this scrape.")
 
-# Function to create a chart from the scraped data
-def create_chart():
-    timestamps = []
-    prices = []
-
+# Function to create all charts
+def create_charts():
     try:
-        with open(DATA_FILE, 'r') as file:
-            reader = csv.reader(file)
-            next(reader)  # Skip the header row
-            for row in reader:
-                timestamps.append(row[0])
-                prices.append(float(row[1]))
+        # Read the data from the CSV file
+        df = pd.read_csv(DATA_FILE, parse_dates=['Timestamp'])
+        df['Hour'] = df['Timestamp'].dt.hour
+        df['DayOfWeek'] = df['Timestamp'].dt.day_name()
+        df['TimeWindow15Min'] = df['Timestamp'].dt.floor('15T')  # 15-minute intervals
+        df['TimeWindow1Hour'] = df['Timestamp'].dt.floor('1H')  # 1-hour intervals
 
+        # Chart 1: Price Over Time
         plt.figure(figsize=(10, 5))
-        plt.plot(timestamps, prices, marker='o')
+        plt.plot(df['Timestamp'], df['Price'], marker='o')
         plt.xlabel('Time')
         plt.ylabel('Price')
         plt.title('Price Over Time')
         plt.xticks(rotation=45)
         plt.tight_layout()
-
-        # Save the chart as an image
-        chart_path = 'static/price_chart.png'
-        plt.savefig(chart_path)
+        plt.savefig('static/price_over_time.png')
         plt.close()
-    except FileNotFoundError:
-        print("Data file not found. No chart generated.")
-    except Exception as e:
-        print(f"Error generating chart: {e}")
 
-# Flask app to display the chart
+        # Chart 2: Price Distribution by Hour of the Day
+        plt.figure(figsize=(10, 5))
+        plt.hist(df['Hour'], bins=24, edgecolor='black')
+        plt.xlabel('Hour of the Day')
+        plt.ylabel('Frequency')
+        plt.title('Price Distribution by Hour of the Day')
+        plt.xticks(range(24))
+        plt.tight_layout()
+        plt.savefig('static/price_distribution_by_hour.png')
+        plt.close()
+
+        # Chart 3: Average Price by Day of the Week
+        avg_price_by_day = df.groupby('DayOfWeek')['Price'].mean().reindex([
+            'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+        ])
+        plt.figure(figsize=(10, 5))
+        avg_price_by_day.plot(kind='bar', edgecolor='black')
+        plt.xlabel('Day of the Week')
+        plt.ylabel('Average Price')
+        plt.title('Average Price by Day of the Week')
+        plt.tight_layout()
+        plt.savefig('static/avg_price_by_day.png')
+        plt.close()
+
+        # Chart 4: Price Stability (Frequency of Price Changes in 15-Minute Windows)
+        price_changes = df.groupby('TimeWindow15Min')['Price'].std().fillna(0)
+        plt.figure(figsize=(10, 5))
+        plt.plot(price_changes.index, price_changes.values, marker='o')
+        plt.xlabel('Time')
+        plt.ylabel('Price Standard Deviation (15-Minute Window)')
+        plt.title('Price Stability Over Time')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig('static/price_stability.png')
+        plt.close()
+
+        # Chart 5: Minimum Price by 15-Minute and Hourly Intervals
+        min_prices_15min = df.groupby('TimeWindow15Min')['Price'].min().reset_index()
+        min_prices_1hour = df.groupby('TimeWindow1Hour')['Price'].min().reset_index()
+
+        plt.figure(figsize=(14, 6))
+        plt.plot(min_prices_15min['TimeWindow15Min'], min_prices_15min['Price'], marker='o', label='15-Minute Intervals')
+        plt.plot(min_prices_1hour['TimeWindow1Hour'], min_prices_1hour['Price'], marker='x', label='1-Hour Intervals')
+        plt.xlabel('Time')
+        plt.ylabel('Minimum Price')
+        plt.title('Minimum Price by 15-Minute and Hourly Intervals')
+        plt.xticks(rotation=45)
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig('static/min_price_intervals.png')
+        plt.close()
+
+    except FileNotFoundError:
+        print("Data file not found. No charts generated.")
+    except Exception as e:
+        print(f"Error generating charts: {e}")
+
+# Flask app to display the charts
 app = Flask(__name__)
 
 @app.route('/')
 def index():
-    create_chart()
+    create_charts()
     return render_template('index.html')
 
 # Schedule the scraping task to run every 30 seconds
 schedule.every(30).seconds.do(scrape_price)
 
 if __name__ == '__main__':
-    print(f"Current working directory: {os.getcwd()}")
-
     # Create the data file if it doesn't exist
     if not os.path.exists(DATA_FILE):
         print(f"Creating data file: {DATA_FILE}")
