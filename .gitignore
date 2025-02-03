@@ -2,3 +2,9 @@ venv/
 .env
 price_data.csv
 static/*.png
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
