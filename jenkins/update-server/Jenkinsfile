@@ -1,0 +1,58 @@
+pipeline {
+    agent any
+
+    environment {
+        // Load configuration from config.yml
+        CONFIG_FILE = 'config.yml'
+        DOCKER_IMAGE_NAME = sh(script: "yq e '.docker.image_name' ${CONFIG_FILE}", returnStdout: true).trim()
+        DOCKER_IMAGE_TAG = sh(script: "yq e '.docker.image_tag' ${CONFIG_FILE}", returnStdout: true).trim()
+        DOCKER_REGISTRY_URL = sh(script: "yq e '.docker.registry_url' ${CONFIG_FILE}", returnStdout: true).trim()
+
+        // Load secrets from Jenkins
+        DOCKER_USERNAME = credentials('docker-username')
+        DOCKER_PASSWORD = credentials('docker-password')
+        KUBECONFIG = credentials('kubeconfig')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build and Upload Docker Image') {
+            steps {
+                script {
+                    // Set environment variables for Docker credentials
+                    withEnv(["DOCKER_USERNAME=${DOCKER_USERNAME}", "DOCKER_PASSWORD=${DOCKER_PASSWORD}"]) {
+                        sh './scripts/upload_docker.sh'
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    // Apply Kubernetes configuration
+                    withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                        sh '''
+                        kubectl apply -f kubernetes/deployment.yaml
+                        kubectl apply -f kubernetes/service.yaml
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Update server deployment completed successfully!'
+        }
+        failure {
+            echo 'Update server deployment failed. Please check the logs.'
+        }
+    }
+}

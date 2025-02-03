@@ -21,9 +21,19 @@ chmod +x scripts/pre-push
 
 ln -s ../../scripts/pre-push .git/hooks/pre-push
 ```
-# Docker
+## Docker
 run and build
 ```
 docker build -t fastlane-scraper .
 docker run -p 5000:5000 fastlane-scraper
 ```
+## CI/CD
+Jenkins is leveraged in jenkins/pr-checks and jenkins/update-server
+When deploying to kubernetes or docker make sure to have the following credentials in the secret manager:
+
+    Docker Credentials:
+        docker-username: Docker registry username.
+        docker-password: Docker registry password.
+
+    Kubernetes Configuration:
+        kubeconfig: Kubernetes configuration file.

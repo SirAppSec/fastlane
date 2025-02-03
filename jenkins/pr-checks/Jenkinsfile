@@ -1,0 +1,47 @@
+pipeline {
+    agent any
+
+    environment {
+        // Load configuration from config.yml
+        CONFIG_FILE = 'config.yml'
+        SCRAPING_URL = sh(script: "yq e '.scraping.url' ${CONFIG_FILE}", returnStdout: true).trim()
+        SCRAPING_INTERVAL = sh(script: "yq e '.scraping.interval' ${CONFIG_FILE}", returnStdout: true).trim()
+        FLASK_HOST = sh(script: "yq e '.flask.host' ${CONFIG_FILE}", returnStdout: true).trim()
+        FLASK_PORT = sh(script: "yq e '.flask.port' ${CONFIG_FILE}", returnStdout: true).trim()
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'pip install -r requirements.txt'
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                sh './scripts/lint_fix.sh'
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh './scripts/run_tests.sh'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'PR checks passed successfully!'
+        }
+        failure {
+            echo 'PR checks failed. Please check the logs.'
+        }
+    }
+}
