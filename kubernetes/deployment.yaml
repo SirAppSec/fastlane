@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastlane-scraper
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fastlane-scraper
+  template:
+    metadata:
+      labels:
+        app: fastlane-scraper
+    spec:
+      containers:
+        - name: fastlane-scraper
+          image: ${DOCKER_REGISTRY_URL}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+          ports:
+            - containerPort: 5000
+          env:
+            - name: FLASK_HOST
+              value: "0.0.0.0"
+            - name: FLASK_PORT
+              value: "5000"
