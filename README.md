@@ -44,3 +44,10 @@ When deploying to kubernetes or docker make sure to have the following credentia
 
     Kubernetes Configuration:
         kubeconfig: Kubernetes configuration file.
+### local deployment using ssh(with or without docker)
+use the scripts/ or jenkins with the following environment variables:
+```
+export SSH_USER="your-ssh-user"
+export SSH_HOST="your-ssh-host"
+export SSH_KEY="path/to/ssh-key"
+```
