@@ -8,22 +8,33 @@ import matplotlib
 matplotlib.use('Agg')  # Set the backend to non-interactive
 import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
 import os
 from datetime import datetime
+import threading
+import yaml
 
+# Load configuration from config.yml
+with open('config.yml', 'r') as file:
+    config = yaml.safe_load(file)
+
+# Access configurations
+SCRAPING_URL = config['scraping']['url']
+SCRAPING_INTERVAL = config['scraping']['interval']
+SCRAPING_RETRIES = config['scraping']['retries']
+SCRAPING_DELAY = config['scraping']['delay']
+FLASK_HOST = config['flask']['host']
+FLASK_PORT = config['flask']['port']
 # File to store the scraped data
-DATA_FILE = 'price_data.csv'
-
+DATA_FILE = config['storage']['csv_file_name']
 # Print the absolute path of the data file
 print(f"Data file path: {os.path.abspath(DATA_FILE)}")
 print(f"Current working directory: {os.getcwd()}")
 
 # Function to scrape the price with error handling
 def scrape_price():
-    url = 'https://fastlane.co.il/'
-    retries = 3  # Number of retries in case of failure
-    delay = 5  # Delay between retries in seconds
+    url = SCRAPING_URL
+    retries = SCRAPING_RETRIES  # Number of retries in case of failure
+    delay = SCRAPING_DELAY  # Delay between retries in seconds
 
     for attempt in range(retries):
         try:
@@ -169,8 +180,15 @@ def index():
     chart_exists = {f"{key}_exists": os.path.exists(f"static/{value}") for key, value in chart_files.items()}
     return render_template('index.html', **chart_exists)
 
-# Schedule the scraping task to run every 30 seconds
-schedule.every(30).seconds.do(scrape_price)
+# Function to run the Flask app
+def run_flask():
+    app.run(debug=False)  # Disable Flask debug mode to avoid blocking
+
+# Function to run the scheduler
+def run_scheduler():
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
 
 if __name__ == '__main__':
     # Create the data file if it doesn't exist
@@ -180,10 +198,13 @@ if __name__ == '__main__':
             writer = csv.writer(file)
             writer.writerow(['Timestamp', 'Price'])
 
-    # Run the Flask app
-    app.run(debug=True)
+    # Schedule the scraping task to run every 30 seconds
+    schedule.every(SCRAPING_INTERVAL).seconds.do(scrape_price)
 
-    # Keep the script running to execute scheduled tasks
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    # Start the Flask app in a separate thread
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.daemon = True  # Allow the thread to exit when the main program exits
+    flask_thread.start()
+
+    # Start the scheduler in the main thread
+    run_scheduler()

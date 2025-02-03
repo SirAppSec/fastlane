@@ -1,0 +1,28 @@
+# Scraping configuration
+scraping:
+  url: "https://fastlane.co.il/"
+  interval: 30  # Scraping interval in seconds
+  retries: 100    # Number of retries on failure
+  delay: 300 # Delay between retries in seconds
+
+# Flask configuration
+flask:
+  host: "0.0.0.0"
+  port: 5000
+
+#local storage file names
+storage:
+  csv_file_name: 'price_data.csv'
+
+# Docker configuration
+docker:
+  image_name: "fastlane-scraper"
+  image_tag: "latest"
+  registry_url: "docker.io"
+  username: "${DOCKER_USERNAME}"  # Use environment variable
+  password: "${DOCKER_PASSWORD}"  # Use environment variable
+
+# Linting configuration
+linting:
+  flake8_config: ".flake8"
+  autopep8_config: "--in-place --aggressive"
