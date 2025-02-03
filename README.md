@@ -27,6 +27,13 @@ run and build
 docker build -t fastlane-scraper .
 docker run -p 5000:5000 fastlane-scraper
 ```
+## Testing
+
+Run tests with coverage:
+```bash
+chmod +x scripts/run_tests.sh
+./scripts/run_tests.sh
+```
 ## CI/CD
 Jenkins is leveraged in jenkins/pr-checks and jenkins/update-server
 When deploying to kubernetes or docker make sure to have the following credentials in the secret manager:

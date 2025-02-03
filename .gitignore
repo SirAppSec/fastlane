@@ -8,3 +8,6 @@ __pycache__/
 *.pyd
 *.db
 *.sqlite3
+htmlcov/
+.coverage
+.pytest_cache

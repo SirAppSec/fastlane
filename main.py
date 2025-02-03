@@ -1,23 +1,26 @@
+import sys
+import os
+import time
+import threading
+from datetime import datetime
+
 import requests
 from bs4 import BeautifulSoup
-import time
 import schedule
 import csv
-from flask import Flask, render_template
+from flask import Flask, render_template, send_file, Response
 import matplotlib
-matplotlib.use('Agg')  # Set the backend to non-interactive
 import matplotlib.pyplot as plt
 import pandas as pd
-import os
-from datetime import datetime
-import threading
 import yaml
-
+from loguru import logger
 # Load configuration from config.yml
 with open('config.yml', 'r') as file:
     config = yaml.safe_load(file)
-
+# setup matplotlib
+matplotlib.use('Agg')  # Set the backend to non-interactive
 # Access configurations
+META_NAME = config['meta']['name']
 SCRAPING_URL = config['scraping']['url']
 SCRAPING_INTERVAL = config['scraping']['interval']
 SCRAPING_RETRIES = config['scraping']['retries']
@@ -26,9 +29,12 @@ FLASK_HOST = config['flask']['host']
 FLASK_PORT = config['flask']['port']
 # File to store the scraped data
 DATA_FILE = config['storage']['csv_file_name']
-# Print the absolute path of the data file
-print(f"Data file path: {os.path.abspath(DATA_FILE)}")
-print(f"Current working directory: {os.getcwd()}")
+DEBUG_LEVEL = config['debug']['level']
+# initialize debugging
+logger.add(sys.stderr, format="{time} {level} {message}", filter=META_NAME, level=DEBUG_LEVEL)
+# logger.info the absolute path of the data file
+logger.info(f"Data file path: {os.path.abspath(DATA_FILE)}")
+logger.info(f"Current working directory: {os.getcwd()}")
 
 # Function to scrape the price with error handling
 def scrape_price():
@@ -64,20 +70,20 @@ def scrape_price():
                     with open(DATA_FILE, 'a', newline='') as file:
                         writer = csv.writer(file)
                         writer.writerow([timestamp, new_price])
-                    print(f"Scraped price: {new_price} at {timestamp} (Price changed)")
+                    logger.info(f"Scraped price: {new_price} at {timestamp} (Price changed)")
                 else:
-                    print(f"Scraped price: {new_price} at {timestamp} (No change)")
+                    logger.info(f"Scraped price: {new_price} at {timestamp} (No change)")
                 break  # Exit the retry loop if successful
             else:
-                print("Price element not found")
+                logger.info("Price element not found")
                 break  # Exit the retry loop if the element is not found
 
         except requests.exceptions.RequestException as e:
-            print(f"Attempt {attempt + 1} failed: {e}")
+            logger.info(f"Attempt {attempt + 1} failed: {e}")
             if attempt < retries - 1:
                 time.sleep(delay)  # Wait before retrying
             else:
-                print("All retries failed. Skipping this scrape.")
+                logger.info("All retries failed. Skipping this scrape.")
 
 # Function to create all charts
 def create_charts():
@@ -161,9 +167,9 @@ def create_charts():
             plt.close()
 
     except FileNotFoundError:
-        print("Data file not found. No charts generated.")
+        logger.info("Data file not found. No charts generated.")
     except Exception as e:
-        print(f"Error generating charts: {e}")
+        logger.info(f"Error generating charts: {e}")
 
 # Flask app to display the charts
 app = Flask(__name__)
@@ -179,7 +185,29 @@ def index():
     }
     chart_exists = {f"{key}_exists": os.path.exists(f"static/{value}") for key, value in chart_files.items()}
     return render_template('index.html', **chart_exists)
+@app.route('/view-data')
+def view_data():
+    try:
+        # Read the CSV file into a DataFrame
+        df = pd.read_csv('price_data.csv')
+        # Convert the DataFrame to an HTML table
+        table_html = df.to_html(index=False, classes='table table-striped')
+        return render_template('view_data.html', table_html=table_html)
+    except FileNotFoundError:
+        return "No data file found.", 404
 
+@app.route('/download-data')
+def download_data():
+    try:
+        # Send the CSV file as a downloadable attachment
+        return send_file(
+            'price_data.csv',
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name='price_data.csv'
+        )
+    except FileNotFoundError:
+        return "No data file found.", 404
 # Function to run the Flask app
 def run_flask():
     app.run(debug=False)  # Disable Flask debug mode to avoid blocking
@@ -193,7 +221,7 @@ def run_scheduler():
 if __name__ == '__main__':
     # Create the data file if it doesn't exist
     if not os.path.exists(DATA_FILE):
-        print(f"Creating data file: {DATA_FILE}")
+        logger.debug(f"Creating data file: {DATA_FILE}")
         with open(DATA_FILE, 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(['Timestamp', 'Price'])

@@ -1,4 +1,7 @@
+meta:
+  name: 'fastlane-scraper'
 # Scraping configuration
+#
 scraping:
   url: "https://fastlane.co.il/"
   interval: 30  # Scraping interval in seconds
@@ -26,3 +29,11 @@ docker:
 linting:
   flake8_config: ".flake8"
   autopep8_config: "--in-place --aggressive"
+
+debug:
+  level: "INFO" 
+
+# Testing configuration
+testing:
+  pytest_args: "--cov=main --cov-report=html"
+  test_location: "tests/"
