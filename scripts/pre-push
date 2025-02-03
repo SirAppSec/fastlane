@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Load configuration from config.yml
+CONFIG_FILE="../config.yml"
+eval "$(sed -n 's/^linting:/linting_/p' $CONFIG_FILE)"
+
+# Run linting
+flake8 --config=$linting_flake8_config ..
+
+# Run tests (if applicable)
+# Example: pytest
+
+# Exit with non-zero status if linting or tests fail
+if [ $? -ne 0 ]; then
+  echo "Linting or tests failed. Push aborted."
+  exit 1
+fi
