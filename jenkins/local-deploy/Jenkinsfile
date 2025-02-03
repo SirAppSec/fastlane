@@ -1,0 +1,57 @@
+pipeline {
+    agent any
+
+    environment {
+        // Load configuration from config.yml
+        CONFIG_FILE = 'config.yml'
+        DOCKER_IMAGE_NAME = sh(script: "yq e '.docker.image_name' ${CONFIG_FILE}", returnStdout: true).trim()
+        DOCKER_IMAGE_TAG = sh(script: "yq e '.docker.image_tag' ${CONFIG_FILE}", returnStdout: true).trim()
+        DOCKER_REGISTRY_URL = sh(script: "yq e '.docker.registry_url' ${CONFIG_FILE}", returnStdout: true).trim()
+
+        // Load secrets from Jenkins
+        DOCKER_USERNAME = credentials('docker-username')
+        DOCKER_PASSWORD = credentials('docker-password')
+        SSH_USER = credentials('ssh-user')
+        SSH_HOST = credentials('ssh-host')
+        SSH_KEY = credentials('ssh-key')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build and Upload Docker Image') {
+            steps {
+                script {
+                    // Set environment variables for Docker credentials
+                    withEnv(["DOCKER_USERNAME=${DOCKER_USERNAME}", "DOCKER_PASSWORD=${DOCKER_PASSWORD}"]) {
+                        sh './scripts/upload_docker.sh'
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to SSH Server') {
+            steps {
+                script {
+                    // Deploy to the remote SSH server
+                    withEnv(["SSH_USER=${SSH_USER}", "SSH_HOST=${SSH_HOST}", "SSH_KEY=${SSH_KEY}"]) {
+                        sh './scripts/deploy_ssh.sh'
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Local deployment completed successfully!'
+        }
+        failure {
+            echo 'Local deployment failed. Please check the logs.'
+        }
+    }
+}
